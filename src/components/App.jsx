@@ -10,10 +10,9 @@ import api from '../api/api'
 export default class App extends Component {
 
   state = {
-    //data: data.hits
     data: [],
     page: 1,
-    totalPages: null,
+    totalPages: 4,
     search: '',
     isLoading: false,
     error: null,
@@ -24,33 +23,24 @@ export default class App extends Component {
     const form = evt.currentTarget;
     const search = form.elements.search.value;
     //console.log('submit:', typeof(search));
-    this.setState({ search })
+    this.setState({ search, data: [], page: 1 })
   }
 
-  loadMore = evn => {
-    console.log('Load more');
-    const images = document.querySelectorAll('.gallery-item').length
-    console.log('images:', images);
-    this.setState(
-      (prevState) => (
-        {page: prevState.page++}
-      ),
-    )
+  getPhotos = async () => {
+    //console.log('search:', this.state.search);
+    //console.log('page:', this.state.page);
+    const { search, page } = this.state;
 
-  }
-
-  async componentDidMount() {
     this.setState({ isLoading: true });
-
+    
     try {
-      const data = await api.fetchPhotos()
-      //const data2 = await api.fetchPhotoById(3277416)
+      const data = await api.fetchPhotos(search, page)    
 
-      //console.log('data2:', data2);
-
-
-
-      this.setState({ data: data.hits });
+      this.setState((prevState) => (
+        {
+          data: page === 1 ? data.hits : [...prevState.data, ...data.hits],
+        }
+      ));
     } catch (error) {
       this.setState({ error });
     } finally {
@@ -58,38 +48,52 @@ export default class App extends Component {
     }
   }
 
-  async componentDidUpdate(prevProps, prevState) {
-    // Check if the query has changed
-    if (prevState.search !== this.state.search) {
-      //console.log('changed');
-      try {
-        const data = await api.fetchPhotos(this.state.search)
+  loadMore = evn => {
 
-        this.setState({ data: data.hits });
-      } catch (error) {
-        this.setState({ error });
-      } finally {
-        this.setState({ isLoading: false });
-      }
+    this.setState(
+      (prevState) => (
+        { page: prevState.page + 1 }
+      ),
+    )  
+  }
+
+  async componentDidMount() {
+    // this.setState({ isLoading: true });
+
+    // try {
+    //   const data = await api.fetchPhotos()
+    //   this.setState({ data: data.hits });
+    // } catch (error) {
+    //   this.setState({ error });
+    // } finally {
+    //   this.setState({ isLoading: false });
+    // }
+  }
+
+  async componentDidUpdate(prevProps, prevState) {
+
+    if (prevState.search !== this.state.search || prevState.page !== this.state.page) {
+
+      this.getPhotos()
+
     }
   }
 
   render() {
 
-    const { data, page, isLoading } = this.state
+    const { data, page, isLoading, totalPages } = this.state
 
-    console.log('page:', page);
+    //onsole.log('page:', page);
+    //console.log('totalPages:', totalPages);
 
     return (
       <main>
         <Searchbar handleSubmitForm={this.handleSubmitForm} />
         {isLoading ? <Loader /> : <ImageGallery data={data} />}
-
-        {data?.length > 0 && <Button page={page} loadMore={this.loadMore} />}
+        {data?.length > 0 && page < totalPages && (<div className="LoadMore-wrap"><Button page={page} loadMore={this.loadMore} /></div>)}
       </main>
     )
   }
-
 
 }
 
